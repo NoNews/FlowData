@@ -1,0 +1,3 @@
+include ':flowdelegate'
+include ':sample'
+rootProject.name = "DataFlowDelegate"
