@@ -9,18 +9,20 @@ import kotlinx.coroutines.test.runBlockingTest
 import org.junit.Test
 import java.net.SocketTimeoutException
 
-internal class DataFlowDelegateTestOnlyNetwork {
+internal class DataFlowDelegateTestNetworkAndMemoryCache {
 
     private val testDispatcher = TestCoroutineDispatcher()
 
     @Test
-    fun `fetch from network - should be loading first`() = runBlockingTest {
+    fun `fetch from network - should be cache only`() = runBlockingTest {
+        val contentFromCache = "I'm from cache"
         val delegate = DataFlowDelegate<Unit, String>(
             fromNetwork = { "I'm from network" },
+            fromMemory = { contentFromCache },
             workingDispatcher = testDispatcher
         )
 
-        val expected = Data<String>(loading = true)
+        val expected = Data(content = contentFromCache, loading = false)
         val actual = delegate.observe(Unit, false)
             .first()
 
@@ -28,43 +30,33 @@ internal class DataFlowDelegateTestOnlyNetwork {
     }
 
     @Test
-    fun `fetch from network - should be loading first, force reload = true`() = runBlockingTest {
+    fun `fetch from network - should be loading  with cache`() = runBlockingTest {
+        val contentFromCache = "I'm from cache"
         val delegate = DataFlowDelegate<Unit, String>(
             fromNetwork = { "I'm from network" },
+            fromMemory = { contentFromCache },
             workingDispatcher = testDispatcher
         )
 
-        val expected = Data<String>(loading = true)
+        val expected = Data(content = contentFromCache, loading = true)
         val actual = delegate.observe(Unit, true)
             .first()
 
         assertEquals(expected, actual)
     }
 
-    @Test
-    fun `fetch from network - should be network data after progress`() = runBlockingTest {
-        val fromNetworkContent = "I'm from network!"
-        val delegate = DataFlowDelegate<Unit, String>(
-            fromNetwork = { fromNetworkContent },
-            workingDispatcher = testDispatcher
-        )
-        val expected = Data(content = fromNetworkContent)
-        val actual = delegate.observe(Unit, false)
-            .drop(1)
-            .first()
-
-        assertEquals(expected, actual)
-    }
 
     @Test
     fun `fetch from network - network error`() = runBlockingTest {
+        val contentFromCache = "I'm from cache"
         val fromNetworkError = SocketTimeoutException()
         val delegate = DataFlowDelegate<Unit, String>(
             fromNetwork = { throw fromNetworkError },
+            fromMemory = { contentFromCache },
             workingDispatcher = testDispatcher
         )
-        val expected = Data<String>(error = fromNetworkError)
-        val actual = delegate.observe(Unit, false)
+        val expected = Data(content = contentFromCache, error = fromNetworkError)
+        val actual = delegate.observe(params = Unit, forceReload = true)
             .drop(1)
             .first()
 
